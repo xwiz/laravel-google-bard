@@ -125,29 +125,15 @@ class LaravelBard
             throw ErrorException::curlError(curl_error($this->session));
         }
 
-        $pattern = '/^rc_/';
-        function extract_rc_responses($array, $pattern, &$result)
-        {
-            foreach ($array as $item) {
-                if (is_array($item)) {
-                    extract_rc_responses($item, $pattern, $result);
-                } elseif (is_string($item) && preg_match($pattern, $item)) {
-                    $result[] = $item;
-                }
-            }
-        }
+        preg_match('/rc_.*?```json(.*?)```/', $resp, $matches);
 
-        $resp_dict = array();
-
-        // Call the function to extract response from the data
-        extract_rc_responses($data, $pattern, $resp_dict);
-        if (empty($resp_dict)) {
+        if (!isset($matches[1])) {
             return ["content" => "Response Error: " . $resp . "."];
         }
 
         $this->reqid += 100000;
 
         //return response directly allow user to process themselves
-        return $resp_dict;
+        return $matches;
     }
 }
