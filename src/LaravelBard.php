@@ -92,7 +92,7 @@ class LaravelBard
     public function get_answer($input_text)
     {
         $params = [
-            "bl" => "boq_assistant-bard-web-server_20230419.00_p1",
+            "bl" => "boq_assistant-bard-web-server_20230801.12_p0",
             "_reqid" => (string) $this->reqid,
             "rt" => "c",
         ];
@@ -125,27 +125,29 @@ class LaravelBard
             throw ErrorException::curlError(curl_error($this->session));
         }
 
-        $resp_dict = json_decode(explode("\n", $resp)[3], true)[0][2];
+        $pattern = '/^rc_/';
+        function extract_rc_responses($array, $pattern, &$result)
+        {
+            foreach ($array as $item) {
+                if (is_array($item)) {
+                    extract_rc_responses($item, $pattern, $result);
+                } elseif (is_string($item) && preg_match($pattern, $item)) {
+                    $result[] = $item;
+                }
+            }
+        }
 
-        if ($resp_dict === null) {
+        $resp_dict = array();
+
+        // Call the function to extract response from the data
+        extract_rc_responses($data, $pattern, $resp_dict);
+        if (empty($resp_dict)) {
             return ["content" => "Response Error: " . $resp . "."];
         }
-        $parsed_answer = json_decode($resp_dict, true);
-        $bard_answer = [
-            "content" => $parsed_answer[0][0],
-            "conversation_id" => $parsed_answer[1][0],
-            "response_id" => $parsed_answer[1][1],
-            "factualityQueries" => $parsed_answer[3],
-            "textQuery" => $parsed_answer[2][0] ?? "",
-            "choices" => array_map(function ($i) {
-                return ["id" => $i[0], "content" => $i[1]];
-            }, $parsed_answer[4]),
-        ];
-        $this->conversation_id = $bard_answer["conversation_id"];
-        $this->response_id = $bard_answer["response_id"];
-        $this->choice_id = $bard_answer["choices"][0]["id"];
+
         $this->reqid += 100000;
 
-        return $bard_answer;
+        //return response directly allow user to process themselves
+        return $resp_dict;
     }
 }
